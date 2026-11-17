@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CJC Check-in</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Arial, sans-serif; background: #F4F2F8; color: #222; }
+  header { background: #281B5A; color: #fff; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  header b { font-size: 15px; }
+  header span { font-size: 13px; white-space: nowrap; }
+  main { padding: 12px; max-width: 560px; margin: 0 auto; }
+  #reader { width: 100%; border-radius: 12px; overflow: hidden; background: #000; }
+  #result { margin: 12px 0; border-radius: 12px; padding: 18px 14px; text-align: center; color: #fff; display: none; }
+  #result .big { font-size: 26px; font-weight: bold; }
+  #result .small { font-size: 16px; margin-top: 6px; }
+  .ok { background: #1E8E3E; } .already { background: #E8710A; } .bad { background: #C5221F; } .wait { background: #5F6368; }
+  button { font: inherit; font-size: 17px; border: 0; border-radius: 10px; padding: 14px; background: #281B5A; color: #fff; width: 100%; margin-top: 8px; }
+  input { font: inherit; font-size: 16px; width: 100%; padding: 12px; border: 1px solid #C9C3DA; border-radius: 10px; margin-top: 8px; }
+  .card { background: #fff; border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+  #people div { background: #fff; border-radius: 10px; padding: 12px; margin-top: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  #people div button { width: auto; margin: 0; padding: 8px 12px; font-size: 14px; }
+  #queueNote { display: none; background: #FFF4E5; }
+  .muted { color: #666; font-size: 13px; }
+</style>
+</head>
+<body>
+<header><b id="title">Check-in</b><span id="count"></span></header>
+<main>
+  <div id="setup" class="card" style="display:none">This phone has no check-in link yet. Open the check-in link from the event team once.</div>
+  <div id="staffBox" class="card" style="display:none">
+    <div>Your name (shown in the sheet next to each check-in):</div>
+    <input id="staffName" placeholder="e.g. Ahmed - Check-in 1" autocomplete="off">
+    <button onclick="saveStaff()">Start</button>
+  </div>
+  <div id="queueNote" class="card"></div>
+  <div id="reader"></div>
+  <button id="camBtn" onclick="startCamera()" style="display:none">Start camera</button>
+  <div id="result"></div>
+  <input id="search" placeholder="No QR? Name, phone or the 6-letter code" oninput="searchSoon()" autocomplete="off">
+  <div id="people"></div>
+  <p class="muted" id="who"></p>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script>
+  // The link is kept on this phone: #a=<web app deployment id>&k=<Check-in Key>. The part after # never leaves the phone.
+  function store(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
+  (function () {
+    var h = new URLSearchParams(location.hash.slice(1));
+    if (h.get("a") && h.get("k")) { store("cjc_ci_api", h.get("a")); store("cjc_ci_key", h.get("k")); history.replaceState(null, "", location.pathname); }
+  })();
+  var API = store("cjc_ci_api") || "", KEY = store("cjc_ci_key") || "";
+  var QKEY = "cjc_ci_queue_" + KEY.slice(0, 8);
+  var staff = store("cjc_ci_staff") || "", scanner = null, lastCode = "", lastAt = 0, busy = false, searchTimer = null;
+
+  function api(params) {
+    var u = "https://script.google.com/macros/s/" + API + "/exec?page=checkinapi&k=" + encodeURIComponent(KEY);
+    Object.keys(params).forEach(function (k) { u += "&" + k + "=" + encodeURIComponent(params[k]); });
+    return fetch(u, {redirect: "follow"}).then(function (r) { return r.json(); });
+  }
+  function queue() { try { return JSON.parse(store(QKEY) || "[]"); } catch (e) { return []; } }
+  function setQueue(q) { store(QKEY, JSON.stringify(q)); showQueue(); }
+  function showQueue() {
+    var n = queue().length, el = document.getElementById("queueNote");
+    el.style.display = n ? "block" : "none";
+    el.textContent = n + " scan(s) saved on this phone without internet. They are sent as soon as the internet is back.";
+  }
+  function beep(kind) {
+    try {
+      var ctx = new (window.AudioContext || window.webkitAudioContext)();
+      var tones = kind === "ok" ? [880] : kind === "already" ? [600, 600] : [220];
+      tones.forEach(function (f, i) {
+        var o = ctx.createOscillator(), g = ctx.createGain();
+        o.frequency.value = f; o.connect(g); g.connect(ctx.destination);
+        g.gain.value = 0.25; o.start(ctx.currentTime + i * 0.25); o.stop(ctx.currentTime + i * 0.25 + 0.18);
+      });
+      if (navigator.vibrate) navigator.vibrate(kind === "ok" ? 120 : [120, 80, 120]);
+    } catch (e) {}
+  }
+  function show(cls, big, small) {
+    var el = document.getElementById("result");
+    el.className = cls; el.style.display = "block";
+    el.innerHTML = '<div class="big"></div><div class="small"></div>';
+    el.querySelector(".big").textContent = big;
+    el.querySelector(".small").textContent = small || "";
+  }
+  function counts(a) { if (a && a.counts) document.getElementById("count").textContent = "Day " + a.day + ": " + a.counts.inToday + " / " + a.counts.active; }
+  function showAnswer(a) {
+    counts(a);
+    var day = "Day " + a.day;
+    if (a.status === "ok") { show("ok", a.name, "Welcome - checked in, " + day); beep("ok"); }
+    else if (a.status === "already") { show("already", a.name, "Already checked in, " + day + ", at " + a.at + (a.by ? " by " + a.by : "")); beep("already"); }
+    else if (a.status === "cancelled") { show("bad", a.name, "Registration not accepted - ask the event team"); beep("bad"); }
+    else if (a.status === "unknown") { show("bad", "Unknown code", "This QR code is not from this event"); beep("bad"); }
+    else if (a.status === "busy") { show("wait", "Try again", "The sheet is busy - scan again"); }
+    else if (a.status === "closed") { show("bad", "Check-in closed", "Ask the event team for the new check-in link"); }
+    else { show("bad", "Error", a.error || ""); }
+  }
+  function handleCode(code) {
+    code = String(code || "").trim();
+    var now = Date.now();
+    if (!code || busy || (code === lastCode && now - lastAt < 4000)) return;
+    lastCode = code; lastAt = now; busy = true;
+    show("wait", "Checking...", "");
+    api({do: "scan", code: code, staff: staff, at: now}).then(function (a) { busy = false; showAnswer(a); })
+      .catch(function () {
+        busy = false;
+        var q = queue(); q.push({code: code, at: now}); setQueue(q);
+        show("wait", "Saved on this phone", "No internet - it is sent when the internet is back");
+      });
+  }
+  function flushQueue() {
+    var q = queue();
+    if (!q.length || busy) return;
+    api({do: "scan", code: q[0].code, staff: staff, at: q[0].at})
+      .then(function () { setQueue(queue().slice(1)); flushQueue(); }).catch(function () {});
+  }
+  setInterval(flushQueue, 15000);
+  window.addEventListener("online", flushQueue);
+
+  function startCamera() {
+    document.getElementById("camBtn").style.display = "none";
+    scanner = scanner || new Html5Qrcode("reader");
+    scanner.start({facingMode: "environment"}, {fps: 10, qrbox: function (w, h) { var s = Math.floor(Math.min(w, h) * 0.75); return {width: s, height: s}; }},
+      handleCode, function () {})
+      .catch(function (e) { document.getElementById("camBtn").style.display = "block"; show("bad", "Camera not started", "Tap Start camera and allow the camera (" + e + ")"); });
+  }
+  function saveStaff() {
+    var v = document.getElementById("staffName").value.trim();
+    if (!v) return;
+    staff = v; store("cjc_ci_staff", v);
+    document.getElementById("staffBox").style.display = "none";
+    ready();
+  }
+  function searchSoon() { clearTimeout(searchTimer); searchTimer = setTimeout(search, 400); }
+  function search() {
+    var q = document.getElementById("search").value.trim(), box = document.getElementById("people");
+    if (q.length < 3) { box.innerHTML = ""; return; }
+    api({do: "search", q: q}).then(function (a) {
+      box.innerHTML = "";
+      (a.people || []).forEach(function (p) {
+        var row = document.createElement("div"), t = document.createElement("span"), b = document.createElement("button");
+        t.textContent = p.name + (p.phoneEnd ? "  ..." + p.phoneEnd : "") + (p.cancelled ? "  (not accepted)" : p.inToday ? "  (already in)" : "");
+        b.textContent = "Check in";
+        b.onclick = function () { box.innerHTML = ""; document.getElementById("search").value = ""; lastCode = ""; handleCode(p.code); };
+        row.appendChild(t); row.appendChild(b); box.appendChild(row);
+      });
+      if (!(a.people || []).length) box.innerHTML = '<p class="muted">Nobody found.</p>';
+    }).catch(function () { box.innerHTML = '<p class="muted">No internet.</p>'; });
+  }
+  function ready() {
+    document.getElementById("who").textContent = "Checking in as: " + staff;
+    document.getElementById("camBtn").style.display = "block";
+    startCamera();
+    api({do: "hello"}).then(function (a) {
+      if (a.status === "closed") { show("bad", "Check-in closed", "Ask the event team for the new check-in link"); return; }
+      document.getElementById("title").textContent = (a.eventName || "") + " - Check-in";
+      counts(a);
+    }).catch(function () {});
+    showQueue(); flushQueue();
+  }
+  if (!API || !KEY) document.getElementById("setup").style.display = "block";
+  else if (!staff) document.getElementById("staffBox").style.display = "block";
+  else ready();
+</script>
+</body>
+</html>

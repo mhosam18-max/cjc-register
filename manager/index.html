@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>CJC Event</title>
+<style>
+  :root { --ink:#1F1B2E; --mute:#6B6880; --line:#E7E4F0; --bg:#F6F4FA; --card:#FFFFFF; --brand:#281B5A; --brand2:#6D28D9;
+          --ok:#1E8E3E; --okbg:#E6F4EA; --warn:#B26A00; --warnbg:#FFF4E0; --bad:#B3261E; --badbg:#FCE8E6; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: "Segoe UI", Tahoma, Arial, sans-serif; font-size: 15px; }
+  header { background: linear-gradient(135deg, #281B5A, #4B2C8F); color: #fff; padding: 12px 16px 10px; display: flex; align-items: center; gap: 10px; }
+  header img { width: 38px; height: 38px; border-radius: 50%; background: #fff; flex: none; }
+  header .t { flex: 1; min-width: 0; }
+  header .t b { display: block; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; direction: ltr; text-align: right; }
+  header .t span { font-size: 12px; opacity: .8; }
+  header button { flex: none; border: 0; background: rgba(255,255,255,.16); color: #fff; border-radius: 10px; padding: 8px 12px; font: inherit; font-size: 13px; }
+  nav { position: sticky; top: 0; z-index: 5; display: flex; background: #fff; border-bottom: 1px solid var(--line); }
+  nav button { flex: 1; border: 0; background: none; padding: 12px 4px; font: inherit; font-weight: 600; color: var(--mute); border-bottom: 3px solid transparent; }
+  nav button.on { color: var(--brand); border-bottom-color: var(--brand2); }
+  main { padding: 12px 16px 40px; max-width: 640px; margin: 0 auto; }
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 8px; text-align: center; min-width: 0; }
+  .card .v { font-size: 20px; font-weight: 700; color: var(--brand); white-space: nowrap; direction: ltr; }
+  .card .l { font-size: 12px; color: var(--mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card.ok .v { color: var(--ok); }
+  .box { background: var(--card); border: 1px solid var(--line); border-radius: 12px; margin-bottom: 12px; overflow: hidden; }
+  .box h3 { margin: 0; padding: 10px 12px; font-size: 14px; display: flex; justify-content: space-between; align-items: center; background: #FBFAFE; border-bottom: 1px solid var(--line); }
+  .box h3 small { color: var(--mute); font-weight: 400; }
+  .row { display: flex; align-items: center; gap: 6px; padding: 9px 10px; border-bottom: 1px solid var(--line); min-height: 42px; }
+  .row:last-child { border-bottom: 0; }
+  .row .n { flex: none; width: 20px; color: var(--mute); font-size: 12px; text-align: center; }
+  .row .nm { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; direction: ltr; text-align: right; font-size: 14px; letter-spacing: -.1px; }
+  .row.in { background: var(--okbg); }
+  .row.gone { opacity: .55; }
+  .chip { flex: none; font-size: 11px; padding: 2px 6px; border-radius: 999px; white-space: nowrap; }
+  .chip.ok { background: var(--okbg); color: var(--ok); }
+  .chip.warn { background: var(--warnbg); color: var(--warn); }
+  .chip.bad { background: var(--badbg); color: var(--bad); }
+  .chip.mute { background: #F0EEF6; color: var(--mute); }
+  .mark { flex: none; width: 22px; text-align: center; font-weight: 700; }
+  .mark.ok { color: var(--ok); } .mark.no { color: #C9C5D6; }
+  a.mark { text-decoration: none; }
+  .bar { height: 8px; background: #EEEAF6; border-radius: 99px; overflow: hidden; flex: 1; }
+  .bar i { display: block; height: 100%; background: var(--brand2); }
+  .gov { display: flex; align-items: center; gap: 8px; padding: 8px 12px; font-size: 13px; }
+  .gov .g { width: 110px; flex: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .gov .c { flex: none; width: 74px; text-align: left; color: var(--mute); white-space: nowrap; direction: ltr; }
+  .ap { flex: none; width: 28px; height: 28px; border-radius: 8px; border: 2px solid #C9C5D6; background: #fff; font-size: 16px; line-height: 26px; text-align: center; color: transparent; padding: 0; }
+  .ap.on { background: var(--ok); border-color: var(--ok); color: #fff; }
+  .ap.busy { border-style: dashed; color: var(--mute); }
+  .msg { text-align: center; color: var(--mute); padding: 30px 10px; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<header>
+  <img src="https://drive.google.com/thumbnail?id=1CG6o1hA5rcCaFFqu_pDIEs34CFha4OAH&sz=w120" alt="">
+  <div class="t"><b id="ev">C.A.I.R.O Journal Club</b><span id="up">...</span></div>
+  <button onclick="load()">تحديث</button>
+</header>
+<nav>
+  <button data-t="att" class="on" onclick="tab('att')">ATT</button>
+  <button data-t="spk" onclick="tab('spk')">SPK</button>
+  <button data-t="mys" onclick="tab('mys')">MYS</button>
+</nav>
+<main>
+  <div id="att"></div>
+  <div id="spk" class="hidden"></div>
+  <div id="mys" class="hidden"></div>
+</main>
+<script>
+  // Link: ...#a=<deployment id>&m=<manager key>. The part after # stays on the phone.
+  function store(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
+  (function () {
+    var h = new URLSearchParams(location.hash.slice(1));
+    if (h.get("a") && h.get("m")) { store("cjc_mg_a", h.get("a")); store("cjc_mg_m", h.get("m")); history.replaceState(null, "", location.pathname); }
+  })();
+  var A = store("cjc_mg_a") || "", M = store("cjc_mg_m") || "", D = null, current = "att";
+  function api(p) {
+    var u = "https://script.google.com/macros/s/" + A + "/exec?page=mgrapi&m=" + encodeURIComponent(M);
+    Object.keys(p).forEach(function (k) { u += "&" + k + "=" + encodeURIComponent(p[k]); });
+    return fetch(u, {redirect: "follow"}).then(function (r) { return r.json(); });
+  }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+  // Long names: first two names and the last one, so a row stays on one line on a phone.
+  function short(n) { var w = String(n || "").trim().split(/\s+/); return w.length > 3 ? [w[0], w[1], w[w.length - 1]].join(" ") : w.join(" "); }
+  function pct(a, b) { return b ? Math.round(a * 100 / b) + "%" : "0%"; }
+  function card(v, l, cls) { var c = el("div", "card" + (cls ? " " + cls : "")); c.appendChild(el("div", "v", v)); c.appendChild(el("div", "l", l)); return c; }
+  function tab(t) {
+    current = t;
+    ["att", "spk", "mys"].forEach(function (x) { document.getElementById(x).classList.toggle("hidden", x !== t); });
+    document.querySelectorAll("nav button").forEach(function (b) { b.classList.toggle("on", b.dataset.t === t); });
+  }
+
+  function load() {
+    document.getElementById("up").textContent = "جاري التحديث...";
+    return api({do: "data"}).then(function (d) {
+      if (d.status !== "ok") { document.getElementById("up").textContent = d.status === "closed" ? "الرابط مقفول" : "خطأ: " + (d.error || ""); return; }
+      D = d;
+      document.getElementById("ev").textContent = d.event.name;
+      document.getElementById("up").textContent = "آخر تحديث " + d.updated;
+      drawAtt(); drawSpk(); drawMys();
+    }).catch(function () { document.getElementById("up").textContent = "مفيش نت - هيحاول تاني"; });
+  }
+
+  function drawAtt() {
+    var box = document.getElementById("att"); box.innerHTML = "";
+    var list = D.att.filter(function (p) { return !p.apology; });
+    var acc = list.filter(function (p) { return p.accepted; });
+    var back = list.filter(function (p) { return p.before > 0; }).length;
+    var day = D.event.today, inKey = day === 2 ? "d2" : "d1";
+    var arrived = acc.filter(function (p) { return p[inKey]; }).length;
+    var cards = el("div", "cards");
+    cards.appendChild(card(list.length, "سجلوا"));
+    cards.appendChild(card(acc.length, "اتعمدوا"));
+    cards.appendChild(card(arrived + " · " + pct(arrived, acc.length), "وصلوا يوم " + day, "ok"));
+    cards.appendChild(card(back + " · " + pct(back, list.length), "حضروا قبل كده"));
+    cards.appendChild(card((list.length - back) + " · " + pct(list.length - back, list.length), "جداد"));
+    var groups = {};
+    list.forEach(function (p) { (groups[p.gov] = groups[p.gov] || []).push(p); });
+    var names = Object.keys(groups).sort(function (a, b) { return groups[b].length - groups[a].length; });
+    cards.appendChild(card(names.length, "محافظات"));
+    box.appendChild(cards);
+
+    var top = el("div", "box"); var h = el("h3"); h.appendChild(el("span", "", "أكبر المحافظات")); top.appendChild(h);
+    var rows = names.slice(0, 3).map(function (g) { return [g, groups[g].length]; });
+    var rest = names.slice(3).reduce(function (s, g) { return s + groups[g].length; }, 0);
+    if (rest) rows.push(["أخرى", rest]);
+    rows.forEach(function (x) {
+      var r = el("div", "gov"); r.appendChild(el("span", "g", x[0]));
+      var b = el("div", "bar"), i = el("i"); i.style.width = pct(x[1], list.length); b.appendChild(i); r.appendChild(b);
+      r.appendChild(el("span", "c", x[1] + " · " + pct(x[1], list.length))); top.appendChild(r);
+    });
+    box.appendChild(top);
+
+    names.forEach(function (g) {
+      var sec = el("div", "box"), hh = el("h3");
+      var arrivedG = groups[g].filter(function (p) { return p.accepted && p[inKey]; }).length;
+      hh.appendChild(el("span", "", g)); hh.appendChild(el("small", "", groups[g].length + (arrivedG ? " · وصل " + arrivedG : "")));
+      sec.appendChild(hh);
+      groups[g].forEach(function (p, i) {
+        var r = el("div", "row" + (p.accepted && p[inKey] ? " in" : ""));
+        r.appendChild(el("span", "n", i + 1));
+        r.appendChild(el("span", "nm", short(p.name)));
+        r.appendChild(p.before > 0 ? el("span", "chip warn", p.before + " مرة") : el("span", "chip mute", "جديد"));
+        var b = el("button", "ap" + (p.accepted ? " on" : ""), "✓");
+        b.title = "Approve";
+        if (!p.accepted) b.onclick = function () { approve(p, b); };
+        r.appendChild(b);
+        sec.appendChild(r);
+      });
+      box.appendChild(sec);
+    });
+    var gone = D.att.filter(function (p) { return p.apology; });
+    if (gone.length) {
+      var s = el("div", "box"); var hg = el("h3"); hg.appendChild(el("span", "", "اعتذروا")); hg.appendChild(el("small", "", gone.length)); s.appendChild(hg);
+      gone.forEach(function (p, i) { var r = el("div", "row gone"); r.appendChild(el("span", "n", i + 1)); r.appendChild(el("span", "nm", short(p.name))); s.appendChild(r); });
+      box.appendChild(s);
+    }
+  }
+
+  function approve(p, b) {
+    if (b.classList.contains("busy")) return;
+    if (!confirm("اعتماد " + p.name + "؟")) return;
+    b.classList.add("busy"); b.textContent = "…";
+    api({do: "approve", id: p.id}).then(function (a) {
+      if (a.status === "ok") { p.accepted = true; drawAtt(); load(); }
+      else { b.classList.remove("busy"); b.textContent = "✓"; alert(a.status === "busy" ? "الشيت مشغول، جرّب تاني" : "ما اتعتمدش: " + (a.error || a.status)); }
+    }).catch(function () { b.classList.remove("busy"); b.textContent = "✓"; alert("مفيش نت"); });
+  }
+
+  function drawSpk() {
+    var box = document.getElementById("spk"); box.innerHTML = "";
+    var active = D.spk.filter(function (s) { return s.status === "Active"; });
+    var conf = active.filter(function (s) { return s.confirmed; }).length;
+    var cards = el("div", "cards");
+    cards.appendChild(card(active.length, "متحدثين"));
+    cards.appendChild(card(conf, "Confirmed", "ok"));
+    cards.appendChild(card(active.length - conf, "لسه"));
+    box.appendChild(cards);
+    var sec = el("div", "box"), seen = {};
+    D.spk.filter(function (s) { var k = s.name + s.status; if (seen[k]) return false; seen[k] = true; return true; }).forEach(function (s, i) {
+      var r = el("div", "row" + (s.status !== "Active" ? " gone" : ""));
+      r.appendChild(el("span", "n", i + 1));
+      r.appendChild(el("span", "nm", short(s.name)));
+      r.appendChild(s.status !== "Active" ? el("span", "chip bad", /^APOLOG/.test(s.status) ? "اعتذر" : "خرج من الأجندة") :
+        s.confirmed ? el("span", "chip ok", "Confirmed") : s.sent ? el("span", "chip warn", "Sent") : el("span", "chip mute", "لسه"));
+      sec.appendChild(r);
+    });
+    box.appendChild(sec);
+  }
+
+  function drawMys() {
+    var box = document.getElementById("mys"); box.innerHTML = "";
+    var active = D.spk.filter(function (s) { return s.status === "Active"; });
+    var des = active.filter(function (s) { return s.design; }).length, post = active.filter(function (s) { return s.post; }).length;
+    var cards = el("div", "cards");
+    cards.appendChild(card(active.length, "متحدثين"));
+    cards.appendChild(card(des, "تصميم", "ok"));
+    cards.appendChild(card(post, "اتنشر", "ok"));
+    box.appendChild(cards);
+    var sec = el("div", "box"), hh = el("h3");
+    hh.appendChild(el("span", "", "المتحدث")); hh.appendChild(el("small", "", "تصميم   ·   بوست")); sec.appendChild(hh);
+    active.forEach(function (s, i) {
+      var r = el("div", "row");
+      r.appendChild(el("span", "n", i + 1));
+      r.appendChild(el("span", "nm", short(s.name)));
+      [s.design, s.post].forEach(function (link) {
+        var m = el(link ? "a" : "span", "mark " + (link ? "ok" : "no"), link ? "✓" : "–");
+        if (link && /^https?:/.test(link)) { m.href = link; m.target = "_blank"; m.rel = "noopener"; }
+        r.appendChild(m);
+      });
+      sec.appendChild(r);
+    });
+    box.appendChild(sec);
+  }
+
+  if (!A || !M) { document.getElementById("att").innerHTML = '<p class="msg">افتح رابط المدير مرة واحدة.</p>'; document.getElementById("up").textContent = ""; }
+  else { load(); setInterval(function () { if (!document.hidden) load(); }, 60000); }
+</script>
+</body>
+</html>
