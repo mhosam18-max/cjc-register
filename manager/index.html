@@ -34,19 +34,21 @@
   .row .nm { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; direction: ltr; text-align: right; font-size: 14px; letter-spacing: -.1px; }
   .row.in { background: var(--okbg); }
   .row.gone { opacity: .55; }
-  .chip { flex: none; font-size: 11px; padding: 2px 6px; border-radius: 999px; white-space: nowrap; }
+  .chip { flex: none; min-width: 50px; text-align: center; font-size: 11px; padding: 3px 6px; border-radius: 999px; white-space: nowrap; }
   .chip.ok { background: var(--okbg); color: var(--ok); }
   .chip.warn { background: var(--warnbg); color: var(--warn); }
   .chip.bad { background: var(--badbg); color: var(--bad); }
   .chip.mute { background: #F0EEF6; color: var(--mute); }
-  .mark { flex: none; width: 22px; text-align: center; font-weight: 700; }
+  .mark { flex: none; width: 64px; text-align: center; font-weight: 700; font-size: 17px; }
+  .row.head { min-height: 36px; background: #FBFAFE; font-size: 13px; font-weight: 600; color: var(--mute); }
+  .row.head .mark { font-size: 13px; font-weight: 600; color: var(--mute); }
   .mark.ok { color: var(--ok); } .mark.no { color: #C9C5D6; }
   a.mark { text-decoration: none; }
-  .bar { height: 8px; background: #EEEAF6; border-radius: 99px; overflow: hidden; flex: 1; }
+  .bar { height: 10px; background: #EEEAF6; border-radius: 99px; overflow: hidden; flex: 1; }
   .bar i { display: block; height: 100%; background: var(--brand2); }
-  .gov { display: flex; align-items: center; gap: 8px; padding: 8px 12px; font-size: 13px; }
-  .gov .g { width: 110px; flex: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .gov .c { flex: none; width: 74px; text-align: left; color: var(--mute); white-space: nowrap; direction: ltr; }
+  .gov { display: flex; align-items: center; gap: 10px; padding: 10px 12px; font-size: 14px; }
+  .gov .g { width: 120px; font-weight: 600; flex: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .gov .c { flex: none; width: 88px; text-align: left; color: var(--ink); font-weight: 600; white-space: nowrap; direction: ltr; }
   .ap { flex: none; width: 28px; height: 28px; border-radius: 8px; border: 2px solid #C9C5D6; background: #fff; font-size: 16px; line-height: 26px; text-align: center; color: transparent; padding: 0; }
   .ap.on { background: var(--ok); border-color: var(--ok); color: #fff; }
   .ap.busy { border-style: dashed; color: var(--mute); }
@@ -201,8 +203,9 @@
     cards.appendChild(card(des, "تصميم", "ok"));
     cards.appendChild(card(post, "اتنشر", "ok"));
     box.appendChild(cards);
-    var sec = el("div", "box"), hh = el("h3");
-    hh.appendChild(el("span", "", "المتحدث")); hh.appendChild(el("small", "", "تصميم   ·   بوست")); sec.appendChild(hh);
+    var sec = el("div", "box"), hh = el("div", "row head");
+    hh.appendChild(el("span", "n", "#")); hh.appendChild(el("span", "nm", "")); hh.appendChild(el("span", "mark", "تصميم")); hh.appendChild(el("span", "mark", "بوست"));
+    sec.appendChild(hh);
     active.forEach(function (s, i) {
       var r = el("div", "row");
       r.appendChild(el("span", "n", i + 1));
