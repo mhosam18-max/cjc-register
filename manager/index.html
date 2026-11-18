@@ -85,13 +85,17 @@
 <script>
   // Link: ...#a=<deployment id>&m=<manager key>. The part after # stays on the phone.
   function store(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
+  // An event's own copy (e.g. /143/) has its web app built in, and its link is just ".../143/#<key>".
+  var PRESET_A = "";
+  var SKEY = PRESET_A ? "cjc_mg_m_" + PRESET_A.slice(-8) : "cjc_mg_m";
   (function () {
-    var h = new URLSearchParams(location.hash.slice(1));
-    // The link keeps its #a=...&m=... part (copying the address bar gives a working link), and it is
-    // also kept on the phone, so the page opens later without it. If the phone cannot keep it, the link still works.
-    if (h.get("a") && h.get("m")) { store("cjc_mg_a", h.get("a")); store("cjc_mg_m", h.get("m")); window.__A = h.get("a"); window.__M = h.get("m"); }
+    var raw = location.hash.slice(1), h = new URLSearchParams(raw);
+    var a = PRESET_A || h.get("a"), m = h.get("m") || (PRESET_A && raw.indexOf("=") < 0 ? raw : "");
+    // The link keeps its # part (copying the address bar gives a working link), and it is also kept on
+    // the phone, so the page opens later without it. If the phone cannot keep it, the link still works.
+    if (a && m) { if (!PRESET_A) store("cjc_mg_a", a); store(SKEY, m); window.__A = a; window.__M = m; }
   })();
-  var A = window.__A || store("cjc_mg_a") || "", M = window.__M || store("cjc_mg_m") || "", D = null;
+  var A = window.__A || PRESET_A || store("cjc_mg_a") || "", M = window.__M || store(SKEY) || "", D = null;
   function api(p) {
     var u = "https://script.google.com/macros/s/" + A + "/exec?page=mgrapi&m=" + encodeURIComponent(M);
     Object.keys(p).forEach(function (k) { u += "&" + k + "=" + encodeURIComponent(p[k]); });
