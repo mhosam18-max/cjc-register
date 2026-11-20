@@ -60,7 +60,7 @@
   .gov .c { flex: none; width: 34px; text-align: right; font-weight: 700; }
   .gov .pc { flex: none; width: 46px; text-align: center; font-size: 11px; font-weight: 700; color: var(--brand2); background: #F1ECFD; border-radius: 99px; padding: 2px 0; }
   .ap { flex: none; width: 28px; height: 28px; border-radius: 8px; border: 2px solid #C9C5D6; background: #fff; font-size: 16px; line-height: 24px; text-align: center; color: transparent; padding: 0; cursor: pointer; }
-  .ap.on { background: var(--ok); border-color: var(--ok); color: #fff; cursor: default; }
+  .ap.on { background: var(--ok); border-color: var(--ok); color: #fff; }
   .ap.busy { border-style: dashed; color: var(--mute); }
   .msg { text-align: center; color: var(--mute); padding: 30px 10px; }
   .hidden { display: none; }
@@ -175,8 +175,8 @@
         r.appendChild(el("span", "nm", short(p.name)));
         r.appendChild(p.before > 0 ? el("span", "chip warn", p.before + "×") : el("span", "chip mute", "New"));
         var b = el("button", "ap" + (p.accepted ? " on" : ""), "✓");
-        b.title = p.accepted ? "Approved" : "Approve";
-        if (!p.accepted) b.onclick = function () { approve(p, b); };
+        b.title = p.accepted ? "Approved - tap to remove" : "Approve";
+        b.onclick = function () { approve(p, b); };
         r.appendChild(b);
         sec.appendChild(r);
       });
@@ -191,13 +191,15 @@
     }
   }
 
+  // Tap an empty box to approve, tap a ticked box to remove the approval.
   function approve(p, b) {
     if (b.classList.contains("busy")) return;
-    if (!confirm("Approve " + p.name + "?")) return;
+    var removing = p.accepted;
+    if (!confirm(removing ? "Remove the approval of " + p.name + "? Their entry code will stop working." : "Approve " + p.name + "?")) return;
     b.classList.add("busy"); b.textContent = "…";
-    api({do: "approve", id: p.id}).then(function (a) {
-      if (a.status === "ok") { p.accepted = true; drawAtt(); load(); }
-      else { b.classList.remove("busy"); b.textContent = "✓"; alert(a.status === "busy" ? "The sheet is busy - try again." : "Not approved: " + (a.error || a.status)); }
+    api({do: removing ? "unapprove" : "approve", id: p.id}).then(function (a) {
+      if (a.status === "ok") { p.accepted = !removing; drawAtt(); load(); }
+      else { b.classList.remove("busy"); b.textContent = "✓"; alert(a.status === "busy" ? "The sheet is busy - try again." : "Not saved: " + (a.error || a.status)); }
     }).catch(function () { b.classList.remove("busy"); b.textContent = "✓"; alert("No internet."); });
   }
 
