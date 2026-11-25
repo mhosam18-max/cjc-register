@@ -32,6 +32,9 @@
   .muted { color: #6B6880; font-size: 13px; }
   #who { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
   #who button { width: auto; margin: 0; padding: 6px 10px; font-size: 12px; background: #EDE7F6; color: #281B5A; }
+  button.ghost { background: #EDE7F6; color: #281B5A; }
+  select { font: inherit; font-size: 16px; width: 100%; padding: 12px; border: 1px solid #CFC8E6; border-radius: 12px; margin-top: 10px; background: #fff; color: #1F1B2E; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 </style>
 </head>
 <body>
@@ -54,6 +57,26 @@
     <div id="result"></div>
     <input id="search" placeholder="No QR? Type name, phone or the 6-letter code" oninput="searchSoon()" autocomplete="off">
     <div id="people"></div>
+    <button id="wkBtn" class="ghost" onclick="openWalkIn()">Not on the list? Add walk-in</button>
+    <div id="wk" class="card" style="display:none">
+      <b>Walk-in</b> <span class="muted">(only the name is required)</span>
+      <input id="wkName" placeholder="Full name *" autocomplete="off">
+      <input id="wkPhone" type="tel" inputmode="numeric" placeholder="Mobile, e.g. 01012345678" autocomplete="off">
+      <input id="wkEmail" type="email" inputmode="email" placeholder="Email" autocomplete="off">
+      <div class="two">
+        <select id="wkGender"><option value="">Gender</option><option>Male</option><option>Female</option></select>
+        <input id="wkAge" type="number" inputmode="numeric" placeholder="Age" min="18" max="100">
+      </div>
+      <input id="wkGov" list="lsGov" placeholder="Governorate" autocomplete="off">
+      <input id="wkAff" list="lsAff" placeholder="Hospital / Institute" autocomplete="off">
+      <div class="two">
+        <input id="wkPos" list="lsPos" placeholder="Position" autocomplete="off">
+        <select id="wkOnc"><option value="">Oncologist?</option><option>Yes</option><option>No</option></select>
+      </div>
+      <datalist id="lsGov"></datalist><datalist id="lsAff"></datalist><datalist id="lsPos"></datalist>
+      <button id="wkSave" onclick="saveWalkIn()">Add and check in</button>
+      <button class="ghost" onclick="closeWalkIn()">Cancel</button>
+    </div>
     <p class="muted" id="who"><span id="whoName"></span><button onclick="changeStaff()">Change name</button></p>
   </div>
 </main>
@@ -183,6 +206,45 @@
       else if (!(a.people || []).length) box.innerHTML = '<p class="muted">Nobody found. Not accepted yet? Ask the event manager to approve the person.</p>';
     }).catch(function () { box.innerHTML = '<p class="muted">No internet.</p>'; });
   }
+  // Walk-in: someone not on the list. Only the name is required; the person is added to the registrations
+  // (accepted) and checked in for today in one step.
+  function fillList(id, items) {
+    var dl = document.getElementById(id); dl.innerHTML = "";
+    (items || []).forEach(function (v) { var o = document.createElement("option"); o.value = v; dl.appendChild(o); });
+  }
+  function openWalkIn() {
+    var q = document.getElementById("search").value.trim();
+    document.getElementById("wk").style.display = "block";
+    document.getElementById("wkBtn").style.display = "none";
+    if (q && !/^\d/.test(q)) document.getElementById("wkName").value = q;
+    else if (/^[\d+ ]{6,}$/.test(q)) document.getElementById("wkPhone").value = q;
+    document.getElementById("wkName").focus();
+  }
+  function closeWalkIn() {
+    ["wkName", "wkPhone", "wkEmail", "wkGender", "wkAge", "wkGov", "wkAff", "wkPos", "wkOnc"].forEach(function (id) { document.getElementById(id).value = ""; });
+    document.getElementById("wk").style.display = "none";
+    document.getElementById("wkBtn").style.display = "block";
+  }
+  function saveWalkIn() {
+    var v = function (id) { return document.getElementById(id).value.trim(); };
+    if (v("wkName").length < 3) { alert("Write the full name."); document.getElementById("wkName").focus(); return; }
+    var b = document.getElementById("wkSave");
+    if (b.disabled) return;
+    b.disabled = true; b.textContent = "Saving...";
+    show("wait", "Adding " + v("wkName") + "...", "");
+    api({do: "walkin", name: v("wkName"), phone: v("wkPhone"), email: v("wkEmail"), gender: v("wkGender"), age: v("wkAge"),
+         governorate: v("wkGov"), affiliation: v("wkAff"), position: v("wkPos"), oncologist: v("wkOnc"), staff: staff, at: Date.now()})
+      .then(function (a) {
+        b.disabled = false; b.textContent = "Add and check in";
+        showAnswer(a);
+        if (a.status === "ok" || a.status === "already") {
+          if (a.matched === "existing") document.querySelector("#result .small").textContent += " - found their registration and accepted it";
+          else document.querySelector("#result .small").textContent += " - added as walk-in";
+          closeWalkIn(); document.getElementById("search").value = ""; document.getElementById("people").innerHTML = "";
+        }
+      })
+      .catch(function () { b.disabled = false; b.textContent = "Add and check in"; show("bad", "No internet", "Nothing was saved - try again"); });
+  }
   var started = false;
   function ready() {
     document.getElementById("app").style.display = "block";
@@ -193,6 +255,7 @@
       if (a.status !== "ok") { show("bad", "Error", a.error || a.status); return; }
       document.getElementById("title").textContent = a.eventName || "Check-in";
       counts(a);
+      if (a.lists) { fillList("lsGov", a.lists.governorates); fillList("lsAff", a.lists.affiliations); fillList("lsPos", a.lists.positions); }
     }).catch(function () { show("wait", "No internet", "Scans are kept on this phone until the internet is back"); });
     showQueue(); flushQueue();
   }
